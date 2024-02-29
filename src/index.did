@@ -1,0 +1,32 @@
+type CotisationPayload = record {
+  tontine_id : text;
+  total_contributed : float64;
+};
+type GroupPayload = record { tontine_id : text; number_of_members : float64 };
+type MemberGroupPayload = record {
+  order_to_benefit : float64;
+  group_id : text;
+  member_id : text;
+};
+type MemberPayload = record { balance : float64; name : text; email : text };
+type PaymentPayload = record {
+  cotisation_id : text;
+  payment_amount : float64;
+  member_id : text;
+};
+type TontinePayload = record {
+  name : text;
+  number_of_cotisations : float64;
+  amount_to_contribute : float64;
+  days_to_contribute : float64;
+};
+service : () -> {
+  addCotisation : (CotisationPayload) -> (text);
+  addGroup : (GroupPayload) -> (text);
+  addMember : (MemberPayload) -> (text);
+  addMemberToGroup : (MemberGroupPayload) -> (text);
+  addTontine : (TontinePayload) -> (text);
+  contribute : (PaymentPayload) -> (float64);
+  getMemberBalance : (text) -> (float64) query;
+  releaseMoneyToBeneficiary : (text) -> (float64);
+}
