@@ -24,6 +24,11 @@ node --version
 - dfx v0.16.1
 
 DFX_VERSION=0.16.1 sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)"
+<<<<<<< Updated upstream
+=======
+
+
+>>>>>>> Stashed changes
 echo 'export PATH="$PATH:$HOME/bin"' >> "$HOME/.bashrc"
 
 2.After that you should run the following commands
