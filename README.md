@@ -6,11 +6,17 @@ A Rotative Saving and Credit Application wrote in Typescript with Azle to be dep
  Because a member benefits every cotisation, the number of members is equal the number of cotisations.
 
  1/ Create a tontine (addTontine)
+
  2/ Create a group of members (addGroup)
+
  3/ Bind the members to the group (addMemberToGroup)
+
  4/ Create a cotisation (addCotisation)
+
  5/ Make the members contribute during a cotisation (contribute)
+ 
  6/ Send the collected fund to the corresponding beneficiary(releaseMoneyToBeneficiary)
+ 
 
  #How to run the project
 
