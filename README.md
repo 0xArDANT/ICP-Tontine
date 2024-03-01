@@ -24,18 +24,17 @@ A Rotative Saving and Credit Application wrote in Typescript with Azle to be dep
 - node v18
 
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+
 nvm use 18
+
 node --version
 
 - dfx v0.16.1
 
-DFX_VERSION=0.16.1 sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)"
-<<<<<<< Updated upstream
-=======
+DFX_VERSION=0.16.1 sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)" 
 
-
->>>>>>> Stashed changes
 echo 'export PATH="$PATH:$HOME/bin"' >> "$HOME/.bashrc"
+
 
 2.After that you should run the following commands
 
