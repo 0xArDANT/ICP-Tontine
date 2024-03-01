@@ -136,7 +136,82 @@ const paymentStorage = new StableBTreeMap<string, Payment>(4, 44, 512);
 const memberGroupStorage = new StableBTreeMap<string, MemberGroup>(5, 44, 512);
 
 /**
- * Functions
+ * Functions to get datas
+ */
+
+//Function to get a tontine given his id
+$query;
+export function getTontine(id: string): Tontine {
+    const tontine = tontineStorage.get(id);
+    return match(tontine, {
+        Some: (t) => t,
+        None: () => ({} as unknown as Tontine),
+    });
+}
+
+//Function to get a tontine knowing the cotisation ID
+
+function getTontineByCotisationId(cotisation_id: string): Tontine | undefined {
+    const cotisation = getCotisation(cotisation_id);
+    if(cotisation){
+        const tontine = getTontine(cotisation.tontine_id);
+        return tontine;
+    }
+}
+// Function to get a cotisation given his id
+$query;
+export function getCotisation(id: string): Cotisation {
+    const cotisation = cotisationStorage.get(id);
+    return match(cotisation, {
+        Some: (c) => c,
+        None: () => ({} as unknown as Cotisation),
+    });
+}
+
+// Function to get a member given his id
+$query;
+export function getMember(id: string): Member {
+    const member = memberStorage.get(id);
+    return match(member, {
+        Some: (m) => m,
+        None: () => ({} as unknown as Member),
+    });
+}
+
+// Function to get the current cotisation knowing the tontine ID
+$query;
+export function getCurrentCotisation(tontine_id: string): Cotisation {
+    const tontine = getTontine(tontine_id);
+    if (!tontine) {
+        throw new Error('Tontine with ID ${id} not found');
+    }
+
+    const cotisations = cotisationStorage.values().filter((cotisation) => cotisation.tontine_id === tontine.id && cotisation.cotisation_round === tontine.current_round);
+    if (cotisations.length !== 1) {
+        throw new Error('Expected exactly one cotisation for the tontine');
+    }
+    return cotisations[0];
+}
+
+// Function to get the total amount a member has contributed
+$query;
+export function getMemberTotalPayments(member_id: string, tontine_id: string): number {
+    const cotisation = getCurrentCotisation(tontine_id);
+    if (!cotisation) {
+        throw new Error("Any cotisations exists for this tontine");
+    }
+    const payments = paymentStorage.values().filter((payment) => payment.member_id === member_id && payment.cotisation_id === cotisation.id);
+    if (payments.length == 0) {
+        return 0;
+    }
+    else {
+        const totalPayments = payments.reduce((acc, payment) => acc + payment.payment_amount, 0);
+        return totalPayments;
+    }
+}
+
+/**
+ * Functions to create or update datas
  */
 
 // Function to create a new tontine
@@ -218,7 +293,7 @@ export function addCotisation(payload: CotisationPayload): string {
     });
 
     if (tontine) {
-       tontine.current_round =  tontine.current_round + 1;
+        tontine.current_round = tontine.current_round + 1;
         tontineStorage.insert(tontine.id, tontine);
 
         const cotisation = {
@@ -240,7 +315,7 @@ export function addCotisation(payload: CotisationPayload): string {
 
 // Function to make a payment by a member for a specific cotisation
 $update;
-export function contribute(payload: PaymentPayload): number {
+export function contribute(payload: PaymentPayload): void {
     const payment = {
         id: uuidv4(),
         member_id: payload.member_id,
@@ -250,31 +325,40 @@ export function contribute(payload: PaymentPayload): number {
         updated_at: Opt.None,
     };
 
-    paymentStorage.insert(payment.id, payment);
-
-    const cotisation = match(cotisationStorage.get(payload.cotisation_id), {
-        Some: (cotisation) => cotisation,
-        None: () => ({} as unknown as Cotisation),
-    });
+    const cotisation = getCotisation(payload.cotisation_id);
 
     if (cotisation) {
-        cotisation.total_contributed += payload.payment_amount;
-        cotisationStorage.insert(payload.cotisation_id, cotisation);
-
-        const member = match(memberStorage.get(payload.member_id), {
-            Some: (member) => member,
-            None: () => ({} as unknown as Member),
-        });
-
-        if (member) {
-            member.balance -= payload.payment_amount;
-            memberStorage.insert(payload.member_id, member);
+        const member = getMember(payload.member_id);
+        const tontine = getTontineByCotisationId(payload.cotisation_id);
+        if(tontine){
+            if (member) {
+                if (member.balance >= payload.payment_amount) {
+                    const member_total_payments = getMemberTotalPayments(payload.member_id, tontine.id);
+                    if(member_total_payments + payload.payment_amount <= tontine.amount_to_contribute){
+                        
+                        //making the payment
+                        paymentStorage.insert(payment.id, payment);
+                        
+                        //updating the member balance
+                        member.balance -= payload.payment_amount;
+                        memberStorage.insert(payload.member_id, member);
+        
+                        //updating the cotisation balance
+                        cotisation.total_contributed += payload.payment_amount;
+                        cotisationStorage.insert(payload.cotisation_id, cotisation);
+                    }
+                    else {
+                        const amount_remaining = tontine.amount_to_contribute - member_total_payments;
+                        throw new Error('You only need to contribute ' + amount_remaining);
+                    }
+                }
+                else throw new Error("The balance of the member is insufficient to pay this amount")
+            }
+            else throw new Error("The member doesn't exist");
         }
-
-        return cotisation.total_contributed;
+        else throw new Error("The tontine doesn't exist");
     }
-
-    else return 0;
+    else throw new Error("The cotisation doesn't exist");
 
 }
 
@@ -327,8 +411,10 @@ export function getMemberBalance(member_id: string): number {
         None: () => ({} as unknown as Member),
     });
 
-    if (member) return member.balance;
-    else return 0;
+    if (!member) {
+        throw new Error('Member not found');
+    }
+    else return member.balance;
 }
 
 
