@@ -278,57 +278,7 @@ export function contribute(payload: PaymentPayload): number {
 
 }
 
-/** Function to send the money to the beneficiary
-$update;
-export function releaseMoneyToBeneficiary(tontine_id: string): number {
-
-    // First we should identify the beneficiary
-    // Let's verify if the tontine exists
-    const tontine = match(tontineStorage.get(tontine_id), {
-        Some: (tontine) => tontine,
-        None: () => ({} as unknown as Tontine),
-    });
-    if (tontine) {
-        let group_id: string;
-        let beneficiary_id: string;
-        let cotisation_id: string;
-
-        const groups = groupStorage.values().filter((group) => group.tontine_id == tontine_id);
-        if (groups.length == 1) {
-            group_id = groups[0].id;
-            const memberGroups = memberGroupStorage.values().filter((memberGroup) => memberGroup.group_id == group_id && memberGroup.order_to_benefit == tontine.current_round);
-            if (memberGroups.length == 1) {
-                beneficiary_id = memberGroups[0].member_id;
-                // Second : identify the current cotisation
-                const cotisations = cotisationStorage.values().filter((cotisation) => cotisation.tontine_id == tontine_id && cotisation.cotisation_round == tontine.current_round);
-                if (cotisations.length == 1) {
-                    cotisation_id = cotisations[0].id;
-                    // Third : transfer the funds from the cotisation to the beneficiary
-                    const member = match(memberStorage.get(beneficiary_id), {
-                        Some: (member) => member,
-                        None: () => ({} as unknown as Member),
-                    });
-
-                    if (member) {
-                        member.balance += cotisations[0].total_contributed;
-                        memberStorage.insert(beneficiary_id, member);
-                        cotisations[0].total_contributed = 0;
-                        cotisationStorage.insert(cotisation_id, cotisations[0]);
-
-                        return member.balance;
-                    }
-                    else return 0;
-                }
-                else return 0;
-            }
-            else return 0;
-        }
-        else return 0;
-    }
-    else return 0;
-}
- */
-
+// Function to send the money to the beneficiary
 $update;
 export function releaseMoneyToBeneficiary(tontine_id: string): number {
     const tontine = match(tontineStorage.get(tontine_id), {
