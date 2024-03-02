@@ -6,11 +6,6 @@ type Cotisation = record {
   total_contributed : float64;
   created_date : nat64;
 };
-type CotisationPayload = record {
-  tontine_id : text;
-  total_contributed : float64;
-};
-type GroupPayload = record { tontine_id : text; number_of_members : float64 };
 type Member = record {
   id : text;
   updated_at : opt nat64;
@@ -35,7 +30,6 @@ type Tontine = record {
   updated_at : opt nat64;
   owner : principal;
   name : text;
-  number_of_cotisations : float64;
   amount_to_contribute : float64;
   days_to_contribute : float64;
   current_round : float64;
@@ -43,16 +37,15 @@ type Tontine = record {
 };
 type TontinePayload = record {
   name : text;
-  number_of_cotisations : float64;
   amount_to_contribute : float64;
   days_to_contribute : float64;
 };
 service : () -> {
-  addCotisation : (CotisationPayload) -> (text);
-  addGroup : (GroupPayload) -> (text);
+  addCotisation : (text) -> (text);
   addMember : (MemberPayload) -> (text);
   addMemberToGroup : (MemberGroupPayload) -> (text);
-  addTontine : (TontinePayload) -> (text);
+  addTontine : (TontinePayload) -> (vec text);
+  autocreateCotisations : (text) -> ();
   contribute : (PaymentPayload) -> ();
   getCotisation : (text) -> (Cotisation) query;
   getCurrentCotisation : (text) -> (Cotisation) query;

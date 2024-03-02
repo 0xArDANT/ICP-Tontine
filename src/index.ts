@@ -27,7 +27,6 @@ type Tontine = Record<{
     name: string; // Name of the tontine
     amount_to_contribute: number; // Amount to be contributed
     days_to_contribute: number; // number of days between each contributions
-    number_of_cotisations: number; //number of cotisations which can also be the number of members for this tontine
     current_round: number; // round in which the members are contributing
     created_date: nat64; // Date when the tontine was created
     updated_at: Opt<nat64>; // Date when the tontine was last updated (optional)
@@ -37,7 +36,6 @@ type Tontine = Record<{
 type Group = Record<{
     id: string; // Unique identifier for the group
     tontine_id: string; // Identifier of the tontine for which the group is created
-    number_of_members: number; // number of members within the group
     created_date: nat64; // Date when the group was created
     updated_at: Opt<nat64>; // Date when the group was last updated (optional)
 }>;
@@ -85,13 +83,6 @@ type TontinePayload = Record<{
     name: string; // Name of the tontine
     amount_to_contribute: number; // Amount to be contributed
     days_to_contribute: number; // number of days between each contributions
-    number_of_cotisations: number; //number of cotisations which can also be the number of members for this tontine
-}>;
-
-// Record payload for the Group entity
-type GroupPayload = Record<{
-    tontine_id: string; // Identifier of the tontine for which the group is created
-    number_of_members: number; // number of members within the group
 }>;
 
 //Record payload for the member entity
@@ -99,12 +90,6 @@ type MemberPayload = Record<{
     name: string; // name of the member
     email: string; // email of the member
     balance: number; // balance of the member
-}>;
-
-// Record payload for the Cotisation entity
-type CotisationPayload = Record<{
-    tontine_id: string; // Identifier of the tontine in which the cotisation is taking place
-    total_contributed: number; // total amount of the payments made by the members
 }>;
 
 // Record payload for the Payment entity
@@ -135,6 +120,16 @@ const paymentStorage = new StableBTreeMap<string, Payment>(4, 44, 512);
 // Array to add members to a group
 const memberGroupStorage = new StableBTreeMap<string, MemberGroup>(5, 44, 512);
 
+
+// Constants we'll use to add time management to our tontine
+const NANOS_PER_SECOND = 1_000_000_000n;
+const SECONDS_PER_MINUTE = 60n;
+const MINUTES_PER_HOUR = 60n;
+const HOURS_PER_DAY = 24n;
+const NANOS_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * NANOS_PER_SECOND;
+const NANOS_PER_MINUTE = NANOS_PER_SECOND * SECONDS_PER_MINUTE;
+const NANOS_PER_HOUR = NANOS_PER_MINUTE * MINUTES_PER_HOUR;
+
 /**
  * Functions to get datas
  */
@@ -153,7 +148,7 @@ export function getTontine(id: string): Tontine {
 
 function getTontineByCotisationId(cotisation_id: string): Tontine | undefined {
     const cotisation = getCotisation(cotisation_id);
-    if(cotisation){
+    if (cotisation) {
         const tontine = getTontine(cotisation.tontine_id);
         return tontine;
     }
@@ -216,36 +211,30 @@ export function getMemberTotalPayments(member_id: string, tontine_id: string): n
 
 // Function to create a new tontine
 $update;
-export function addTontine(payload: TontinePayload): string {
+export function addTontine(payload: TontinePayload): Vec<string> {
     const tontine = {
         id: uuidv4(),
         owner: ic.caller(),
         name: payload.name,
         amount_to_contribute: payload.amount_to_contribute,
         days_to_contribute: payload.days_to_contribute,
-        number_of_cotisations: payload.number_of_cotisations,
         current_round: 0,
         created_date: ic.time(),
         updated_at: Opt.None,
     };
 
-    tontineStorage.insert(tontine.id, tontine);
-    return tontine.id;
-}
-
-// Function to create a new group
-$update;
-export function addGroup(payload: GroupPayload): string {
+    // Automatically create a group after a tontine creation
     const group = {
         id: uuidv4(),
-        tontine_id: payload.tontine_id,
-        number_of_members: payload.number_of_members,
+        tontine_id: tontine.id,
         created_date: ic.time(),
         updated_at: Opt.None,
     };
 
     groupStorage.insert(group.id, group);
-    return group.id;
+    tontineStorage.insert(tontine.id, tontine);
+
+    return [tontine.id, group.id];
 }
 
 // Function to create a new member
@@ -284,21 +273,17 @@ export function addMemberToGroup(payload: MemberGroupPayload): string {
 
 // Function to create a cotisation
 $update;
-export function addCotisation(payload: CotisationPayload): string {
+export function addCotisation(tontine_id: string): string {
 
     //updating the current round of the tontine
-    const tontine = match(tontineStorage.get(payload.tontine_id), {
-        Some: (tontine) => tontine,
-        None: () => ({} as unknown as Tontine),
-    });
-
+    const tontine = getTontine(tontine_id);
     if (tontine) {
         tontine.current_round = tontine.current_round + 1;
         tontineStorage.insert(tontine.id, tontine);
 
         const cotisation = {
             id: uuidv4(),
-            tontine_id: tontine.id,
+            tontine_id: tontine_id,
             total_contributed: 0,
             cotisation_round: tontine.current_round,
             created_date: ic.time(),
@@ -312,6 +297,48 @@ export function addCotisation(payload: CotisationPayload): string {
     else return "";
 
 }
+
+// Function to automatically create cotisation after a specified amount of time
+/** 
+ $update;
+export function autocreateCotisations(tontine_id: string): void {
+
+    // Find out if the number of cotisations for this tontine is less than or equal the number_of members
+
+    const tontine = getTontine(tontine_id);
+    if (!tontine) {
+        throw new Error('Tontine with ID: ' + tontine_id);
+    }
+    const groups = groupStorage.values().filter((group) => group.tontine_id === tontine.id);
+    if (groups.length !== 1) {
+        throw new Error('There should be one group for the tontine with ID: ' + tontine_id);
+    }
+    const membersInGroup = memberGroupStorage.values().filter((memberGroup) => memberGroup.group_id === groups[0].id);
+    if (membersInGroup.length == 0) {
+        throw new Error('There is not any member in the tontine with ID: ' + tontine_id);
+    }
+    if(tontine.current_round == 0) {
+        addCotisation(tontine_id);
+        autocreateCotisations(tontine_id);
+    }
+    else {
+        if (tontine.current_round < membersInGroup.length) {
+            const start_time = ic.time();
+            while (ic.time() < start_time + NANOS_PER_MINUTE * BigInt(tontine.days_to_contribute)) {
+                //
+            }
+            addCotisation(tontine_id);
+            autocreateCotisations(tontine_id);
+        }
+        else {
+            throw new Error('The tontine is already ended');
+        }
+    }
+}
+ * 
+*/
+
+
 
 // Function to make a payment by a member for a specific cotisation
 $update;
@@ -330,19 +357,19 @@ export function contribute(payload: PaymentPayload): void {
     if (cotisation) {
         const member = getMember(payload.member_id);
         const tontine = getTontineByCotisationId(payload.cotisation_id);
-        if(tontine){
+        if (tontine) {
             if (member) {
                 if (member.balance >= payload.payment_amount) {
                     const member_total_payments = getMemberTotalPayments(payload.member_id, tontine.id);
-                    if(member_total_payments + payload.payment_amount <= tontine.amount_to_contribute){
-                        
+                    if (member_total_payments + payload.payment_amount <= tontine.amount_to_contribute) {
+
                         //making the payment
                         paymentStorage.insert(payment.id, payment);
-                        
+
                         //updating the member balance
                         member.balance -= payload.payment_amount;
                         memberStorage.insert(payload.member_id, member);
-        
+
                         //updating the cotisation balance
                         cotisation.total_contributed += payload.payment_amount;
                         cotisationStorage.insert(payload.cotisation_id, cotisation);
@@ -365,11 +392,7 @@ export function contribute(payload: PaymentPayload): void {
 // Function to send the money to the beneficiary
 $update;
 export function releaseMoneyToBeneficiary(tontine_id: string): number {
-    const tontine = match(tontineStorage.get(tontine_id), {
-        Some: (tontine) => tontine,
-        None: () => ({} as unknown as Tontine),
-    });
-
+    const tontine = getTontine(tontine_id);
     if (!tontine) {
         throw new Error('Tontine not found');
     }
