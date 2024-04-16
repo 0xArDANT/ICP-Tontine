@@ -14,14 +14,7 @@ Mettre une tel système sur la blockchain permet de lui donner un caractère san
 
 2. Configuration matérielle requise
 
-Créer et tester des applications en local avec le protocole Internet Computer requiert l’installation sur votre ordinateur d’un réplica qui est un environnement de simulation de la blockchain ICP. Par la suite, il sera nécessaire d’écrire le code de notre contrat intelligent qui sera ensuite déployé sur ce réplica. Le langage de programmation utilisé sera TypeScript plus précisément  le Framework Azle qui a été créé spécifiquement pour le développement blockchain sur ICP. 
-
-Ci-dessous, la configuration matérielle requise pour installer ce replica ainsi que l’environnement de développement.
-
-- Processeur : core i3 ou supérieur
--  8Go de RAM ou plus
--  2Go d'espace libre pour le code du projet.
-
+Créer et tester des applications en local avec le protocole Internet Computer requiert l’installation sur votre ordinateur d’un réplica qui est un environnement de simulation de la blockchain ICP.
 
 3- Système d’exploitation recommandé
 
@@ -70,16 +63,14 @@ Si vous rencontrez une erreur “Command not found” ou “Commande introuvable
 
 echo 'export PATH="$PATH:$HOME/bin"' >> "$HOME/.bashrc"
 
-5. Outils de développement
 
-- Avoir un compte sur github.com et installer l'application GitKraken sur son système Linux afin de faciliter la gestion des envois de code sur GitHub.
-- Installer un logiciel de programmation (IDE) : VS Code car il intègre des extensions git et TypeScript qui nous seront très utiles.
+- Tester le projet : 
+Installer dfx avec les commandes : 
+dfx start --background
+dfx deploy
 
-6. Cours à parcourir avant le workshop pour avoir les bases de TypeScript
-
-- Parcourir le repo du projet sur GitHub afin d’avoir une idée de ce sur quoi on va travailler : https://github.com/AroldTouko/ICP-Tontine
-- Suivre des cours sur les fondamentaux du langage TypeScript tels que https://www.freecodecamp.org/news/learn-typescript-beginners-guide ou https://dacade.org/communities/icp/courses/typescript-smart-contract-101/learning-modules/b14741ea-ee33-43a4-a742-9cdc0a6f0d1c qui est plus orienté sur ICP.
-
+Utiliser la commande suivante pour arrêter DFX :
+dfx stop
 
 
 # Tester les fonctions du projet
