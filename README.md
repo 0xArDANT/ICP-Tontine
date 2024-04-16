@@ -14,26 +14,21 @@ A Rotative Saving and Credit Application wrote in Typescript with Azle to be dep
 
  #How to run the project
 
-1. You should have : 
+1. You should have : </br>
 - node v18
-
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-nvm use 18
-node --version
-
+</br>
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash </br>
+nvm use 18 </br>
+node --version </br>
+</br>
 - dfx v0.16.1
 
-DFX_VERSION=0.16.1 sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)"
-<<<<<<< Updated upstream
-=======
-
-
->>>>>>> Stashed changes
+DFX_VERSION=0.16.1 sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)" </br>
 echo 'export PATH="$PATH:$HOME/bin"' >> "$HOME/.bashrc"
 
 2.After that you should run the following commands
 
 npm install
-
+</br>
 dfx start --background
 dfx deploy
