@@ -34,5 +34,5 @@ echo 'export PATH="$PATH:$HOME/bin"' >> "$HOME/.bashrc"
 
 npm install
 </br>
-dfx start --background
+dfx start --background </br>
 dfx deploy
