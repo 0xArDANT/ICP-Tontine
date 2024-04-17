@@ -10,25 +10,18 @@
 
 
 // Importing necessary modules from the 'azle' library and 'uuid' library
+// Importing necessary libraries and dependencies
 import { $query, $update, Record, StableBTreeMap, Vec, match, Result, nat64, ic, Opt, Principal } from 'azle';
 import { v4 as uuidv4 } from "uuid";
 
-/**
- * Creating the differents entities
- * We need entities for : Tontines, Groups, Members, Contributing Periods aka Cotisations, and Payments
- * For that we'll need to create Record objects and StableBTreeMap for each entity
- */
-
-
 // Record type for a Tontine entity
-
 type Tontine = Record<{
     id: string; // Unique identifier for the tontine
     owner: Principal; // Owner of the tontine
     name: string; // Name of the tontine
     amount_to_contribute: number; // Amount to be contributed
-    days_to_contribute: number; // number of days between each contributions
-    current_round: number; // round in which the members are contributing
+    days_to_contribute: number; // Number of days between each contributions
+    current_round: number; // Round in which the members are contributing
     created_date: nat64; // Date when the tontine was created
     updated_at: Opt<nat64>; // Date when the tontine was last updated (optional)
 }>;
@@ -44,19 +37,19 @@ type Group = Record<{
 // Record type for a Member entity
 type Member = Record<{
     id: string; // Unique identifier for the member
-    name: string; // name of the member
-    email: string; // email of the member
-    balance: number; // balance of the member
+    name: string; // Name of the member
+    email: string; // Email of the member
+    balance: number; // Balance of the member
     created_date: nat64; // Date when the member was created
     updated_at: Opt<nat64>; // Date when the member was last updated (optional)
 }>;
 
-// Record type for an entity binding a member to a group by his order to benefit
+// Record type for an entity binding a member to a group by their order to benefit
 type MemberGroup = Record<{
     id: string; // Unique identifier for the bond
     member_id: string; // Identifier of the member
     group_id: string; // Identifier of the group
-    order_to_benefit: number; // For example : 1 if the member will be the first to benefit
+    order_to_benefit: number; // For example: 1 if the member will be the first to benefit
     created_date: nat64; // Date when the member was bond to the group
     updated_at: Opt<nat64>; // (optional)
 }>;
@@ -65,8 +58,8 @@ type MemberGroup = Record<{
 type Cotisation = Record<{
     id: string; // Unique identifier of the cotisation
     tontine_id: string; // Identifier of the tontine in which the cotisation is taking place
-    total_contributed: number; // total amount of the payments made by the members
-    cotisation_round: number; // round in which the members are contributing
+    total_contributed: number; // Total amount of the payments made by the members
+    cotisation_round: number; // Round in which the members are contributing
     created_date: nat64; // Date when the cotisation was created
     updated_at: Opt<nat64>; // Date when the cotisation was last updated (optional)
 }>;
@@ -76,53 +69,46 @@ type Payment = Record<{
     id: string; // Unique identifier of the payment
     member_id: string; // Identifier of the member making the payment
     cotisation_id: string; // Identifier of the cotisation for which the payment is made
-    payment_amount: number; // amount the member is paying
+    payment_amount: number; // Amount the member is paying
 }>;
 
 // Record payload for the tontine entity
 type TontinePayload = Record<{
     name: string; // Name of the tontine
     amount_to_contribute: number; // Amount to be contributed
-    days_to_contribute: number; // number of days between each contributions
+    days_to_contribute: number; // Number of days between each contributions
 }>;
 
-//Record payload for the member entity
+// Record payload for the member entity
 type MemberPayload = Record<{
-    name: string; // name of the member
-    email: string; // email of the member
-    balance: number; // balance of the member
+    name: string; // Name of the member
+    email: string; // Email of the member
+    balance: number; // Balance of the member
 }>;
 
 // Record payload for the Payment entity
 type PaymentPayload = Record<{
     member_id: string; // Identifier of the member making the payment
     cotisation_id: string; // Identifier of the cotisation for which the payment is made
-    payment_amount: number; // amount the member is paying
+    payment_amount: number; // Amount the member is paying
 }>;
 
-// Record payload for the entity binding a member to a group by his order to benefit
+// Record payload for the entity binding a member to a group by their order to benefit
 type MemberGroupPayload = Record<{
     member_id: string; // Identifier of the member
     group_id: string; // Identifier of the group
-    order_to_benefit: number; // For example : 1 if the member will be the first to benefit
+    order_to_benefit: number; // For example: 1 if the member will be the first to benefit
 }>;
 
-
-/**
- * Creating the arrays that will contain our datas
- */
-
+// Creating the arrays that will contain our data
 const tontineStorage = new StableBTreeMap<string, Tontine>(0, 44, 512);
 const groupStorage = new StableBTreeMap<string, Group>(1, 44, 512);
 const memberStorage = new StableBTreeMap<string, Member>(2, 44, 512);
 const cotisationStorage = new StableBTreeMap<string, Cotisation>(3, 44, 512);
 const paymentStorage = new StableBTreeMap<string, Payment>(4, 44, 512);
-
-// Array to add members to a group
 const memberGroupStorage = new StableBTreeMap<string, MemberGroup>(5, 44, 512);
 
-
-// Constants we'll use to add time management to our tontine
+// Constants for time management
 const NANOS_PER_SECOND = 1_000_000_000n;
 const SECONDS_PER_MINUTE = 60n;
 const MINUTES_PER_HOUR = 60n;
@@ -131,55 +117,42 @@ const NANOS_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * NA
 const NANOS_PER_MINUTE = NANOS_PER_SECOND * SECONDS_PER_MINUTE;
 const NANOS_PER_HOUR = NANOS_PER_MINUTE * MINUTES_PER_HOUR;
 
-/**
- * Functions to get datas
- */
-
-//Function to get a tontine given his id
+// Function to get a tontine given its ID
 $query;
 export function getTontine(id: string): Tontine {
     const tontine = tontineStorage.get(id);
     return match(tontine, {
         Some: (t) => t,
-        None: () => ({} as unknown as Tontine),
+        None: () => ({} as Tontine),
     });
 }
 
-//Function to get a tontine knowing the cotisation ID
-
-function getTontineByCotisationId(cotisation_id: string): Tontine | undefined {
-    const cotisation = getCotisation(cotisation_id);
-    if (cotisation) {
-        const tontine = getTontine(cotisation.tontine_id);
-        return tontine;
-    }
-}
-// Function to get a cotisation given his id
+// Function to get a cotisation given its ID
 $query;
 export function getCotisation(id: string): Cotisation {
     const cotisation = cotisationStorage.get(id);
     return match(cotisation, {
         Some: (c) => c,
-        None: () => ({} as unknown as Cotisation),
+        None: () => ({} as Cotisation),
     });
 }
 
-// Function to get a member given his id
+// Function to get a member given its ID
 $query;
 export function getMember(id: string): Member {
     const member = memberStorage.get(id);
     return match(member, {
         Some: (m) => m,
-        None: () => ({} as unknown as Member),
+        None: () => ({} as Member),
     });
 }
 
-// Function to get the current cotisation knowing the tontine ID
+// Function to get the current cotisation given the tontine ID
 $query;
 export function getCurrentCotisation(tontine_id: string): Cotisation {
     const tontine = getTontine(tontine_id);
     if (!tontine) {
-        throw new Error('Tontine with ID ${id} not found');
+        throw new Error(`Tontine with ID ${tontine_id} not found`);
     }
 
     const cotisations = cotisationStorage.values().filter((cotisation) => cotisation.tontine_id === tontine.id && cotisation.cotisation_round === tontine.current_round);
@@ -194,159 +167,155 @@ $query;
 export function getMemberTotalPayments(member_id: string, tontine_id: string): number {
     const cotisation = getCurrentCotisation(tontine_id);
     if (!cotisation) {
-        throw new Error("Any cotisations exists for this tontine");
+        throw new Error("No cotisations exist for this tontine");
     }
     const payments = paymentStorage.values().filter((payment) => payment.member_id === member_id && payment.cotisation_id === cotisation.id);
-    if (payments.length == 0) {
+    if (payments.length === 0) {
         return 0;
-    }
-    else {
-        const totalPayments = payments.reduce((acc, payment) => acc + payment.payment_amount, 0);
-        return totalPayments;
+    } else {
+        return payments.reduce((acc, payment) => acc + payment.payment_amount, 0);
     }
 }
-
-/**
- * Functions to create or update datas
- */
 
 // Function to create a new tontine
 $update;
 export function addTontine(payload: TontinePayload): Vec<string> {
-    const tontine = {
-        id: uuidv4(),
-        owner: ic.caller(),
+    const tontine_id = uuidv4();
+    const owner = ic.caller();
+    const created_date = ic.time();
+    const tontine: Tontine = {
+        id: tontine_id,
+        owner: owner,
         name: payload.name,
         amount_to_contribute: payload.amount_to_contribute,
         days_to_contribute: payload.days_to_contribute,
         current_round: 0,
-        created_date: ic.time(),
+        created_date: created_date,
         updated_at: Opt.None,
     };
 
     // Automatically create a group after a tontine creation
-    const group = {
-        id: uuidv4(),
-        tontine_id: tontine.id,
-        created_date: ic.time(),
+    const group_id = uuidv4();
+    const group: Group = {
+        id: group_id,
+        tontine_id: tontine_id,
+        created_date: created_date,
         updated_at: Opt.None,
     };
 
-    groupStorage.insert(group.id, group);
-    tontineStorage.insert(tontine.id, tontine);
+    groupStorage.insert(group_id, group);
+    tontineStorage.insert(tontine_id, tontine);
 
-    return [tontine.id, group.id];
+    return Vec.fromArray([tontine_id, group_id]);
 }
 
 // Function to create a new member
 $update;
 export function addMember(payload: MemberPayload): string {
-    const member = {
-        id: uuidv4(),
+    const member_id = uuidv4();
+    const created_date = ic.time();
+    const member: Member = {
+        id: member_id,
         name: payload.name,
         email: payload.email,
         balance: payload.balance,
-        created_date: ic.time(),
+        created_date: created_date,
         updated_at: Opt.None,
     };
 
-    memberStorage.insert(member.id, member);
-    return member.id;
+    memberStorage.insert(member_id, member);
+    return member_id;
 }
 
 // Function to add a member to a group
 $update;
 export function addMemberToGroup(payload: MemberGroupPayload): string {
-    const memberGroup = {
-        id: uuidv4(),
+    const memberGroup_id = uuidv4();
+    const created_date = ic.time();
+    const memberGroup: MemberGroup = {
+        id: memberGroup_id,
         member_id: payload.member_id,
         group_id: payload.group_id,
         order_to_benefit: payload.order_to_benefit,
-        created_date: ic.time(),
+        created_date: created_date,
         updated_at: Opt.None,
     };
 
-    //The order to benefit should be unique per member and less than the number of members in the group
-
-    memberGroupStorage.insert(memberGroup.id, memberGroup);
-    return memberGroup.id;
+    // The order to benefit should be unique per member and less than the number of members in the group
+    memberGroupStorage.insert(memberGroup_id, memberGroup);
+    return memberGroup_id;
 }
 
 // Function to create a cotisation
 $update;
 export function addCotisation(tontine_id: string): string {
-
-    //updating the current round of the tontine
     const tontine = getTontine(tontine_id);
-    if (tontine) {
-        tontine.current_round = tontine.current_round + 1;
-        tontineStorage.insert(tontine.id, tontine);
-
-        const cotisation = {
-            id: uuidv4(),
-            tontine_id: tontine_id,
-            total_contributed: 0,
-            cotisation_round: tontine.current_round,
-            created_date: ic.time(),
-            updated_at: Opt.None,
-        };
-
-        cotisationStorage.insert(cotisation.id, cotisation);
-
-        return cotisation.id;
+    if (!tontine) {
+        throw new Error('Tontine not found');
     }
-    else return "";
 
+    const cotisation_id = uuidv4();
+    const created_date = ic.time();
+    const cotisation: Cotisation = {
+        id: cotisation_id,
+        tontine_id: tontine_id,
+        total_contributed: 0,
+        cotisation_round: tontine.current_round,
+        created_date: created_date,
+        updated_at: Opt.None,
+    };
+
+    // Updating the current round of the tontine
+    tontine.current_round += 1;
+    tontineStorage.insert(tontine_id, tontine);
+
+    cotisationStorage.insert(cotisation_id, cotisation);
+
+    return cotisation_id;
 }
-
 
 // Function to make a payment by a member for a specific cotisation
 $update;
 export function contribute(payload: PaymentPayload): void {
-    const payment = {
-        id: uuidv4(),
+    const cotisation = getCurrentCotisation(payload.cotisation_id);
+    if (!cotisation) {
+        throw new Error('Cotisation not found');
+    }
+
+    const member = getMember(payload.member_id);
+    if (!member) {
+        throw new Error('Member not found');
+    }
+
+    const total_payments = getMemberTotalPayments(payload.member_id, cotisation.tontine_id);
+    if (total_payments + payload.payment_amount > cotisation.total_contributed) {
+        throw new Error('Payment amount exceeds the remaining contribution needed');
+    }
+
+    if (member.balance < payload.payment_amount) {
+        throw new Error('Insufficient balance to make the payment');
+    }
+
+    const payment_id = uuidv4();
+    const created_date = ic.time();
+    const payment: Payment = {
+        id: payment_id,
         member_id: payload.member_id,
         cotisation_id: payload.cotisation_id,
         payment_amount: payload.payment_amount,
-        created_date: ic.time(),
+        created_date: created_date,
         updated_at: Opt.None,
     };
 
-    const cotisation = getCotisation(payload.cotisation_id);
+    // Update member balance
+    member.balance -= payload.payment_amount;
+    memberStorage.insert(payload.member_id, member);
 
-    if (cotisation) {
-        const member = getMember(payload.member_id);
-        const tontine = getTontineByCotisationId(payload.cotisation_id);
-        if (tontine) {
-            if (member) {
-                if (member.balance >= payload.payment_amount) {
-                    const member_total_payments = getMemberTotalPayments(payload.member_id, tontine.id);
-                    if (member_total_payments + payload.payment_amount <= tontine.amount_to_contribute) {
+    // Update cotisation total contributed
+    cotisation.total_contributed += payload.payment_amount;
+    cotisationStorage.insert(cotisation.id, cotisation);
 
-                        //making the payment
-                        paymentStorage.insert(payment.id, payment);
-
-                        //updating the member balance
-                        member.balance -= payload.payment_amount;
-                        memberStorage.insert(payload.member_id, member);
-
-                        //updating the cotisation balance
-                        cotisation.total_contributed += payload.payment_amount;
-                        cotisationStorage.insert(payload.cotisation_id, cotisation);
-                    }
-                    else {
-                        const amount_remaining = tontine.amount_to_contribute - member_total_payments;
-                        throw new Error('You only need to contribute ' + amount_remaining);
-                    }
-                }
-                else throw new Error("The balance of the member is insufficient to pay this amount")
-            }
-            else throw new Error("The member doesn't exist");
-        }
-        else throw new Error("The tontine doesn't exist");
-    }
-    else throw new Error("The cotisation doesn't exist");
-
+    paymentStorage.insert(payment_id, payment);
 }
 
 // Function to send the money to the beneficiary
@@ -372,18 +341,19 @@ export function releaseMoneyToBeneficiary(tontine_id: string): number {
         throw new Error('Expected exactly one cotisation for the tontine');
     }
 
-    const members = memberStorage.values().filter((member) => member.id === memberGroups[0].member_id);
-
-    if (members.length !== 1) {
-        throw new Error('Expected exactly one member as beneficiary');
+    const beneficiary_id = memberGroups[0].member_id;
+    const beneficiary = getMember(beneficiary_id);
+    if (!beneficiary) {
+        throw new Error('Beneficiary member not found');
     }
 
-    members[0].balance += cotisations[0].total_contributed;
-    memberStorage.insert(members[0].id, members[0]);
+    beneficiary.balance += cotisations[0].total_contributed;
+    memberStorage.insert(beneficiary_id, beneficiary);
+
     cotisations[0].total_contributed = 0;
     cotisationStorage.insert(cotisations[0].id, cotisations[0]);
 
-    return members[0].balance;
+    return beneficiary.balance;
 }
 
 // Function to get a member balance
@@ -391,15 +361,14 @@ $query;
 export function getMemberBalance(member_id: string): number {
     const member = match(memberStorage.get(member_id), {
         Some: (member) => member,
-        None: () => ({} as unknown as Member),
+        None: () => ({} as Member),
     });
 
     if (!member) {
         throw new Error('Member not found');
     }
-    else return member.balance;
+    return member.balance;
 }
-
 
 // A workaround to make the uuid package work with Azle
 globalThis.crypto = {
@@ -414,3 +383,4 @@ globalThis.crypto = {
         return array;
     },
 };
+
